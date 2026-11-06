@@ -1,0 +1,139 @@
+name: GGX run evaluation
+description: >-
+  Run GGX reports on the agents of a pull request at its head commit and wait for the result. GGX writes the
+  result as a comment on the pull request with the GitHub connection of the GGX user.
+author: GenGuardX
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  ggx-url:
+    description: Base URL of the GGX server, such as https://ggx.example.com
+    required: true
+  ggx-api-key:
+    description: >-
+      The API key of the GGX user that runs the evaluations. Store it as a secret. The user has connected GitHub in GGX
+      (My Account, Integrations): GGX fetches the branch and writes the comment as that account.
+    required: true
+  project:
+    description: Slug of the GGX project that holds the Code Repo of this repository, the reports and the data.
+    required: true
+  reports:
+    description: >-
+      Names of the reports to run on every pull request, separated by commas or lines. For the full tier (a
+      comment on the pull request) these are used when full-reports is empty.
+    required: true
+  full-reports:
+    description: Names of the reports to run for the full tier, which runs when the workflow is started by a comment.
+    required: false
+    default: ""
+  tier:
+    description: >-
+      A name for this set of reports. auto: "full" when a comment starts the workflow, "default" otherwise. The
+      comment on the pull request and the idempotency of a run are kept for each tier.
+    required: false
+    default: auto
+  agents:
+    description: >-
+      Which agents to test: "changed" (those whose code the pull request changes), "all", or module:attribute
+      entries separated by commas, for agents that GGX does not detect (such as functions declared with the GGX
+      decorators).
+    required: false
+    default: changed
+  python-path:
+    description: The folders explicit module:attribute agents are imported from, relative to the repository root and separated by ":" as in PYTHONPATH. The first folder that has a module wins.
+    required: false
+    default: ""
+  data-tables:
+    description: Names of the GGX data tables (in the project) the reports run on, separated by commas.
+    required: false
+    default: ""
+  data-definition:
+    description: >-
+      Code that prepares the dataset from the data tables, bound to variables named after their aliases. Without
+      it, the first table is the dataset.
+    required: false
+    default: ""
+  report-data:
+    description: A JSON object with the values of the report parameters, by alias.
+    required: false
+    default: "{}"
+  max-rows:
+    description: Run on at most this many rows of the data, for a quick check. Empty runs on all of it.
+    required: false
+    default: ""
+  timeout-minutes:
+    description: How long to wait for the evaluation before the step stops waiting. The run goes on in GGX.
+    required: false
+    default: "30"
+  poll-interval-seconds:
+    description: How often to ask GGX for the state of the evaluation.
+    required: false
+    default: "15"
+  comment:
+    description: Have GGX write the result as a comment on the pull request, edited in place on later runs.
+    required: false
+    default: "true"
+  commit-status:
+    description: Also set a commit status "ggx/<tier>" (needs statuses write permission).
+    required: false
+    default: "false"
+  fail-on-error:
+    description: Fail the step when an evaluation fails or does not finish in time.
+    required: false
+    default: "true"
+  github-token:
+    description: >-
+      Token that reads the pull request (its head commit and changed files) and sets the commit status. It is used
+      on the runner only and never sent to GGX. The default is the token of the workflow.
+    required: false
+    default: ${{ github.token }}
+  pr-number:
+    description: The pull request, for events other than pull_request and issue_comment.
+    required: false
+    default: ""
+
+outputs:
+  status:
+    description: completed, failed, timeout, or skipped (a pull request from a fork).
+    value: ${{ steps.run.outputs.status }}
+  run-ids:
+    description: JSON array with the ids of the GGX runs.
+    value: ${{ steps.run.outputs.run-ids }}
+  dashboard-urls:
+    description: JSON array with the links to the GGX dashboard of each run.
+    value: ${{ steps.run.outputs.dashboard-urls }}
+  comment-url:
+    description: The link to the comment GGX wrote on the pull request.
+    value: ${{ steps.run.outputs.comment-url }}
+  summary:
+    description: The result as Markdown, as it is in the comment.
+    value: ${{ steps.run.outputs.summary }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/run.sh"
+      env:
+        INPUT_GGX_URL: ${{ inputs.ggx-url }}
+        INPUT_GGX_API_KEY: ${{ inputs.ggx-api-key }}
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_REPORTS: ${{ inputs.reports }}
+        INPUT_FULL_REPORTS: ${{ inputs.full-reports }}
+        INPUT_TIER: ${{ inputs.tier }}
+        INPUT_AGENTS: ${{ inputs.agents }}
+        INPUT_PYTHON_PATH: ${{ inputs.python-path }}
+        INPUT_DATA_TABLES: ${{ inputs.data-tables }}
+        INPUT_DATA_DEFINITION: ${{ inputs.data-definition }}
+        INPUT_REPORT_DATA: ${{ inputs.report-data }}
+        INPUT_MAX_ROWS: ${{ inputs.max-rows }}
+        INPUT_TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+        INPUT_POLL_INTERVAL_SECONDS: ${{ inputs.poll-interval-seconds }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_COMMIT_STATUS: ${{ inputs.commit-status }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_PR_NUMBER: ${{ inputs.pr-number }}
