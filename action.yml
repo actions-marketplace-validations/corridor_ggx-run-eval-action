@@ -1,7 +1,6 @@
 name: GGX run evaluation
 description: >-
-  Run GGX reports on the agents of a pull request at its head commit and wait for the result. GGX writes the
-  result as a comment on the pull request with the GitHub connection of the GGX user.
+  Run GGX reports on the agents in a pull request at its head commit and write the result as a comment on the pull request.
 author: GenGuardX
 branding:
   icon: check-circle
